@@ -1,0 +1,13 @@
+{
+  "name": "rag-system-frontend",
+  "version": "1.0.0",
+  "description": "RAG System Frontend",
+  "main": "index.js",
+  "scripts": {
+    "dev": "echo 'Frontend development server - coming soon'",
+    "build": "echo 'Frontend build - coming soon'",
+    "start": "echo 'Frontend start - coming soon'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

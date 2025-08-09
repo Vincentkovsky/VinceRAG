@@ -1,0 +1,42 @@
+# Core FastAPI dependencies
+fastapi
+uvicorn[standard]
+gunicorn
+
+# Database
+sqlalchemy
+alembic
+
+# Redis and caching
+redis
+celery
+
+# Authentication and security
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+
+# Environment and configuration
+python-dotenv
+pydantic
+pydantic-settings
+email-validator
+
+# Testing
+pytest
+pytest-asyncio
+httpx
+
+# Document processing
+PyPDF2
+pdfplumber
+python-docx
+openpyxl
+python-pptx
+langchain-text-splitters
+python-magic
+
+# Development
+black
+isort
+flake8

@@ -3,7 +3,7 @@ Application configuration settings
 """
 
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from typing import Optional
 
 
@@ -61,9 +61,49 @@ class Settings(BaseSettings):
         description="Upload directory"
     )
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    # Vector database settings
+    chroma_host: str = Field(
+        default="localhost",
+        description="Chroma database host"
+    )
+    chroma_port: int = Field(
+        default=8000,
+        description="Chroma database port"
+    )
+    chroma_collection_name: str = Field(
+        default="rag_documents",
+        description="Chroma collection name"
+    )
+    chroma_persist_directory: str = Field(
+        default="./storage/chroma",
+        description="Chroma persistence directory"
+    )
+    
+    # OpenAI settings
+    openai_api_key: Optional[str] = Field(
+        default=None,
+        description="OpenAI API key"
+    )
+    openai_embedding_model: str = Field(
+        default="text-embedding-ada-002",
+        description="OpenAI embedding model"
+    )
+    openai_embedding_dimensions: int = Field(
+        default=1536,
+        description="OpenAI embedding dimensions"
+    )
+    
+    # Chunking settings
+    chunk_size: int = Field(
+        default=1000,
+        description="Text chunk size"
+    )
+    chunk_overlap: int = Field(
+        default=200,
+        description="Text chunk overlap"
+    )
+    
+    model_config = ConfigDict(env_file=".env", case_sensitive=False)
 
 
 settings = Settings()

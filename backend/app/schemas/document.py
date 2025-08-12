@@ -2,7 +2,7 @@
 Document schemas
 """
 
-from pydantic import BaseModel, HttpUrl, validator
+from pydantic import BaseModel, HttpUrl, field_validator, ConfigDict
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
@@ -67,7 +67,7 @@ class Document(DocumentBase):
         """Get URL from metadata"""
         return self.metadata.get('url')
     
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DocumentChunkBase(BaseModel):
@@ -91,7 +91,7 @@ class DocumentChunk(DocumentChunkBase):
     document_type: Optional[str] = None
     similarity: Optional[float] = None
     
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CrawlOptions(BaseModel):
@@ -100,13 +100,15 @@ class CrawlOptions(BaseModel):
     max_pages: int = 10
     include_subdomains: bool = False
     
-    @validator('max_depth')
+    @field_validator('max_depth')
+    @classmethod
     def validate_max_depth(cls, v):
         if v < 1 or v > 5:
             raise ValueError('Max depth must be between 1 and 5')
         return v
     
-    @validator('max_pages')
+    @field_validator('max_pages')
+    @classmethod
     def validate_max_pages(cls, v):
         if v < 1 or v > 50:
             raise ValueError('Max pages must be between 1 and 50')
@@ -118,7 +120,8 @@ class URLRequest(BaseModel):
     url: HttpUrl
     crawl_options: Optional[CrawlOptions] = None
     
-    @validator('url')
+    @field_validator('url')
+    @classmethod
     def validate_url_safety(cls, v):
         """Validate URL safety"""
         url_str = str(v).lower()

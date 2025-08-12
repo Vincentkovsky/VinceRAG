@@ -2,7 +2,7 @@
 Chat schemas
 """
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ConfigDict, field_validator, validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -65,8 +65,7 @@ class ChatMessage(ChatMessageBase):
     sources: Optional[List[DocumentSource]] = None
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ChatSessionBase(BaseModel):
@@ -96,8 +95,7 @@ class ChatSession(ChatSessionBase):
     message_count: Optional[int] = None
     last_message_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ChatQuery(BaseModel):
@@ -105,7 +103,8 @@ class ChatQuery(BaseModel):
     query: str
     session_id: Optional[int] = None  # Snowflake ID
     
-    @validator('query')
+    @field_validator('query')
+    @classmethod
     def validate_query(cls, v):
         if not v or not v.strip():
             raise ValueError('Query cannot be empty')

@@ -151,7 +151,16 @@ async def add_url(
     current_user: User = Depends(get_current_active_user)
 ):
     """Add a URL for scraping"""
+    from ...services.url_processor import url_processor
     from ...tasks.document_tasks import process_url_task
+    
+    # Check for duplicate URL
+    duplicate_doc_id = await url_processor.check_url_duplicate(str(url_request.url))
+    if duplicate_doc_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"URL already processed (Document ID: {duplicate_doc_id})"
+        )
     
     document_data = DocumentCreate(
         name=str(url_request.url),
@@ -187,6 +196,66 @@ async def add_url(
         )
     
     return Document.model_validate(document)
+
+
+@router.post("/crawl", response_model=List[Document])
+async def crawl_website(
+    url_request: URLRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Crawl a website starting from a URL"""
+    from ...tasks.document_tasks import crawl_website_task
+    
+    # Validate crawl options
+    crawl_options = url_request.crawl_options
+    if not crawl_options:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Crawl options are required for website crawling"
+        )
+    
+    # Create a parent document to track the crawl operation
+    document_data = DocumentCreate(
+        name=f"Website Crawl: {url_request.url}",
+        type='url',
+        url=url_request.url,
+        metadata={
+            'url': str(url_request.url),
+            'crawlOptions': crawl_options.dict(),
+            'addedBy': current_user.id,
+            'isCrawlParent': True
+        }
+    )
+    
+    parent_document = await DocumentService.create_document(db, document_data)
+    
+    # Queue website crawling
+    try:
+        task = crawl_website_task.delay(
+            parent_document.id,
+            str(url_request.url),
+            crawl_options.dict()
+        )
+        
+        # Update document metadata with task ID
+        await DocumentService.update_document(
+            db, 
+            parent_document.id, 
+            DocumentUpdate(metadata={'taskId': task.id})
+        )
+        
+        # Return the parent document for now
+        # The actual crawled documents will be created by the background task
+        return [Document.model_validate(parent_document)]
+        
+    except Exception as e:
+        # If task queuing fails, delete the document record
+        await DocumentService.delete_document(db, parent_document.id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to queue website crawling: {str(e)}"
+        )
 
 
 @router.get("/{document_id}", response_model=Document)

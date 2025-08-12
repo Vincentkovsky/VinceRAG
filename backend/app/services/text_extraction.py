@@ -9,7 +9,7 @@ from typing import Dict, Any, Optional, Tuple
 from pathlib import Path
 
 # PDF processing
-import PyPDF2
+import pypdf
 import pdfplumber
 
 # Office documents
@@ -169,13 +169,13 @@ class TextExtractor:
                     })
         
         except Exception as e:
-            # Fallback to PyPDF2
+            # Fallback to pypdf
             try:
                 with open(file_path, 'rb') as file:
-                    pdf_reader = PyPDF2.PdfReader(file)
+                    pdf_reader = pypdf.PdfReader(file)
                     metadata.update({
                         'page_count': len(pdf_reader.pages),
-                        'extraction_method': 'PyPDF2',
+                        'extraction_method': 'pypdf',
                         'fallback_reason': str(e)
                     })
                     
@@ -192,7 +192,7 @@ class TextExtractor:
                             'producer': pdf_reader.metadata.get('/Producer')
                         })
             except Exception as fallback_error:
-                raise TextExtractionError(f"Both pdfplumber and PyPDF2 failed: {fallback_error}")
+                raise TextExtractionError(f"Both pdfplumber and pypdf failed: {fallback_error}")
         
         return '\n\n'.join(text_content), metadata
     

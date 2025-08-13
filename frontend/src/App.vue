@@ -136,6 +136,11 @@ onMounted(async () => {
   // Initialize auth state
   await authStore.initializeAuth()
   
+  // Force refresh user data to get latest permissions
+  if (authStore.isAuthenticated) {
+    await authStore.refreshUser()
+  }
+  
   // Listen for online/offline events
   window.addEventListener('online', () => appStore.setOnlineStatus(true))
   window.addEventListener('offline', () => appStore.setOnlineStatus(false))

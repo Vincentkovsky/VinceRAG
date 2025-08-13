@@ -5,13 +5,11 @@ Vector database service using Chroma for document embeddings
 import asyncio
 import logging
 from typing import List, Dict, Any, Optional, Tuple
-from contextlib import asynccontextmanager
 import chromadb
 from chromadb.config import Settings as ChromaSettings
-from chromadb.api.models.Collection import Collection
 from openai import AsyncOpenAI
-import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete
 
 from ..core.config import settings
 from ..core.snowflake import generate_id
@@ -29,15 +27,25 @@ class EmbeddingService:
     """Service for generating embeddings using OpenAI"""
     
     def __init__(self):
-        if not settings.openai_api_key:
-            raise ValueError("OpenAI API key is required for embedding generation")
+        if not settings.current_embedding_api_key:
+            logger.warning(f"API key not configured for embedding provider '{settings.embedding_provider}' - embedding service will not be functional")
+            self.client = None
+            self.model = None
+            self.dimensions = None
+            return
         
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key.get_secret_value())
-        self.model = settings.openai_embedding_model
-        self.dimensions = settings.openai_embedding_dimensions
+        self.client = AsyncOpenAI(
+            api_key=settings.current_embedding_api_key.get_secret_value(),
+            base_url=settings.current_embedding_base_url
+        )
+        self.model = settings.current_embedding_model
+        self.dimensions = settings.current_embedding_dimensions
         
     async def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for a list of texts"""
+        if not self.client:
+            raise VectorDatabaseError("OpenAI API key not configured - cannot generate embeddings")
+        
         try:
             # OpenAI API has a limit on batch size, so we process in chunks
             batch_size = 100
@@ -67,6 +75,9 @@ class EmbeddingService:
     
     async def embed_query(self, text: str) -> List[float]:
         """Generate embedding for a single query text"""
+        if not self.client:
+            raise VectorDatabaseError("OpenAI API key not configured - cannot generate embeddings")
+        
         try:
             response = await self.client.embeddings.create(
                 model=self.model,
@@ -200,8 +211,8 @@ class ChromaVectorStore:
             return {"error": str(e)}
 
 
-class ChunkStorageManager:
-    """Hybrid storage manager for SQL + Vector database operations"""
+class VectorService:
+    """Main vector service for hybrid SQL + Vector database operations"""
     
     def __init__(self):
         self.embedding_service = EmbeddingService()
@@ -214,6 +225,17 @@ class ChunkStorageManager:
         chunks: List[Dict[str, Any]]
     ) -> List[DocumentChunk]:
         """Store chunks in both SQL and vector databases"""
+        if not chunks:
+            logger.warning(f"No chunks provided for document {document_id}")
+            return []
+        
+        # Validate chunk data
+        for i, chunk in enumerate(chunks):
+            if not isinstance(chunk, dict) or "content" not in chunk:
+                raise VectorDatabaseError(f"Invalid chunk data at index {i}: missing 'content' field")
+            if not chunk["content"].strip():
+                raise VectorDatabaseError(f"Empty content in chunk at index {i}")
+        
         try:
             # Generate embeddings for all chunks
             chunk_texts = [chunk["content"] for chunk in chunks]
@@ -286,7 +308,6 @@ class ChunkStorageManager:
         """Delete all chunks for a document from both databases"""
         try:
             # Get all chunks for this document
-            from sqlalchemy import select
             result = await db.execute(
                 select(DocumentChunk).where(DocumentChunk.document_id == document_id)
             )
@@ -303,8 +324,9 @@ class ChunkStorageManager:
             await self.vector_store.delete_documents(vector_ids)
             
             # Delete from SQL database
-            for chunk in chunks:
-                await db.delete(chunk)
+            await db.execute(
+                delete(DocumentChunk).where(DocumentChunk.document_id == document_id)
+            )
             
             await db.commit()
             
@@ -366,7 +388,6 @@ class ChunkStorageManager:
     ) -> Optional[DocumentChunk]:
         """Get a specific chunk by ID"""
         try:
-            from sqlalchemy import select
             result = await db.execute(
                 select(DocumentChunk).where(DocumentChunk.id == chunk_id)
             )
@@ -392,12 +413,14 @@ class ChunkStorageManager:
             # Generate new embedding
             embedding = await self.embedding_service.embed_query(content)
             
+            # Update vector database first
+            await self.vector_store.delete_documents([chunk.vector_id])
+            
             # Update SQL record
             chunk.content = content
             chunk.token_count = len(content.split())  # Simple token count
             
-            # Update vector database
-            await self.vector_store.delete_documents([chunk.vector_id])
+            # Add updated document to vector database
             await self.vector_store.add_documents(
                 ids=[chunk.vector_id],
                 embeddings=[embedding],
@@ -412,6 +435,7 @@ class ChunkStorageManager:
                 }]
             )
             
+            # Commit SQL changes last
             await db.commit()
             
             logger.info(f"Updated chunk {chunk_id}")
@@ -428,7 +452,9 @@ class ChunkStorageManager:
             vector_stats = await self.vector_store.get_collection_stats()
             return {
                 "vector_database": vector_stats,
-                "embedding_model": settings.openai_embedding_model,
+                "ai_provider": settings.ai_provider,
+                "embedding_model": settings.current_embedding_model,
+                "chat_model": settings.current_chat_model,
                 "chunk_size": settings.chunk_size,
                 "chunk_overlap": settings.chunk_overlap
             }
@@ -436,7 +462,83 @@ class ChunkStorageManager:
         except Exception as e:
             logger.error(f"Failed to get stats: {e}")
             return {"error": str(e)}
+    
+    async def get_collection_info(self) -> Dict[str, Any]:
+        """Get vector database collection information for health checks"""
+        try:
+            # Check if embedding service is available
+            if not self.embedding_service.client:
+                return {
+                    "status": "degraded",
+                    "collection_stats": {},
+                    "embedding_model": None,
+                    "error": "OpenAI API key not configured"
+                }
+            
+            stats = await self.get_stats()
+            
+            # Check for errors in stats
+            if "error" in stats:
+                return {
+                    "status": "unhealthy",
+                    "collection_stats": {},
+                    "embedding_model": stats.get("embedding_model"),
+                    "error": stats["error"]
+                }
+            
+            return {
+                "status": "healthy",
+                "collection_stats": stats.get("vector_database", {}),
+                "embedding_model": stats.get("embedding_model"),
+                "error": None
+            }
+        except Exception as e:
+            logger.error(f"Vector service health check failed: {e}")
+            return {
+                "status": "unhealthy", 
+                "error": str(e),
+                "collection_stats": {},
+                "embedding_model": None
+            }
+    
+    async def search_similar_chunks(
+        self,
+        query: str,
+        n_results: int = 10,
+        document_id: Optional[int] = None,
+        similarity_threshold: float = 0.7
+    ) -> List[Dict[str, Any]]:
+        """Search for similar document chunks (alias for similarity_search)"""
+        return await self.similarity_search(
+            query=query,
+            n_results=n_results,
+            document_id=document_id,
+            similarity_threshold=similarity_threshold
+        )
+    
+    async def store_document_chunks(
+        self,
+        db: AsyncSession,
+        document_id: int,
+        chunks: List[Dict[str, Any]]
+    ) -> List[DocumentChunk]:
+        """Store document chunks in vector database (alias for store_chunks)"""
+        return await self.store_chunks(db, document_id, chunks)
+    
+    async def delete_document_chunks(
+        self,
+        db: AsyncSession,
+        document_id: int
+    ) -> None:
+        """Delete all chunks for a document (alias for delete_chunks)"""
+        await self.delete_chunks(db, document_id)
+    
+    async def get_statistics(self) -> Dict[str, Any]:
+        """Get comprehensive vector service statistics (alias for get_stats)"""
+        return await self.get_stats()
 
 
-# Global instance
-chunk_storage_manager = ChunkStorageManager()
+# Global instances
+vector_service = VectorService()
+# For backward compatibility
+chunk_storage_manager = vector_service

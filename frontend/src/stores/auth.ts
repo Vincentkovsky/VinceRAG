@@ -107,6 +107,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function refreshUser(): Promise<void> {
+    // Force refresh current user data from server
+    await getCurrentUser()
+  }
+
   function logout(): void {
     const appStore = useAppStore()
     
@@ -165,6 +170,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     login,
     getCurrentUser,
+    refreshUser,
     logout,
     initializeAuth,
     clearErrors

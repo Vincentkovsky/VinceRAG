@@ -61,7 +61,7 @@ const router = createRouter({
 })
 
 // Navigation guards
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   // Update document title
   if (to.meta?.title) {
     document.title = `${to.meta.title} - KiroRAG`

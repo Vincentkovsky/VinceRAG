@@ -101,10 +101,24 @@ class Settings(BaseSettings):
         description="Chroma persistence directory"
     )
     
+    # AI Provider Settings - Separate providers for embedding and chat
+    embedding_provider: str = Field(
+        default="openai",
+        description="Embedding provider (openai, qwen, custom)"
+    )
+    chat_provider: str = Field(
+        default="openai", 
+        description="Chat provider (openai, qwen, custom)"
+    )
+    
     # OpenAI settings
     openai_api_key: Optional[SecretStr] = Field(
         default=None,
         description="OpenAI API key"
+    )
+    openai_base_url: str = Field(
+        default="https://api.openai.com/v1",
+        description="OpenAI API base URL"
     )
     openai_embedding_model: str = Field(
         default="text-embedding-ada-002",
@@ -114,6 +128,132 @@ class Settings(BaseSettings):
         default=1536,
         description="OpenAI embedding dimensions"
     )
+    openai_chat_model: str = Field(
+        default="gpt-3.5-turbo",
+        description="OpenAI chat model for LLM"
+    )
+    
+    # Qwen (Alibaba Cloud) settings
+    qwen_api_key: Optional[SecretStr] = Field(
+        default=None,
+        description="Qwen API key"
+    )
+    qwen_base_url: str = Field(
+        default="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        description="Qwen API base URL"
+    )
+    qwen_embedding_model: str = Field(
+        default="text-embedding-v2",
+        description="Qwen embedding model"
+    )
+    qwen_embedding_dimensions: int = Field(
+        default=1536,
+        description="Qwen embedding dimensions"
+    )
+    qwen_chat_model: str = Field(
+        default="qwen-max-latest",
+        description="Qwen chat model for LLM"
+    )
+    
+    # Custom API settings
+    custom_api_key: Optional[SecretStr] = Field(
+        default=None,
+        description="Custom API key"
+    )
+    custom_base_url: str = Field(
+        default="",
+        description="Custom API base URL"
+    )
+    custom_embedding_model: str = Field(
+        default="",
+        description="Custom embedding model"
+    )
+    custom_embedding_dimensions: int = Field(
+        default=1536,
+        description="Custom embedding dimensions"
+    )
+    custom_chat_model: str = Field(
+        default="",
+        description="Custom chat model for LLM"
+    )
+    
+    # Current active models (computed properties)
+    @property
+    def current_embedding_model(self) -> str:
+        """Get current embedding model based on embedding provider"""
+        if self.embedding_provider == "openai":
+            return self.openai_embedding_model
+        elif self.embedding_provider == "qwen":
+            return self.qwen_embedding_model
+        elif self.embedding_provider == "custom":
+            return self.custom_embedding_model
+        return self.openai_embedding_model
+    
+    @property
+    def current_embedding_dimensions(self) -> int:
+        """Get current embedding dimensions based on embedding provider"""
+        if self.embedding_provider == "openai":
+            return self.openai_embedding_dimensions
+        elif self.embedding_provider == "qwen":
+            return self.qwen_embedding_dimensions
+        elif self.embedding_provider == "custom":
+            return self.custom_embedding_dimensions
+        return self.openai_embedding_dimensions
+    
+    @property
+    def current_chat_model(self) -> str:
+        """Get current chat model based on chat provider"""
+        if self.chat_provider == "openai":
+            return self.openai_chat_model
+        elif self.chat_provider == "qwen":
+            return self.qwen_chat_model
+        elif self.chat_provider == "custom":
+            return self.custom_chat_model
+        return self.openai_chat_model
+    
+    @property
+    def current_embedding_api_key(self) -> Optional[SecretStr]:
+        """Get current API key for embedding provider"""
+        if self.embedding_provider == "openai":
+            return self.openai_api_key
+        elif self.embedding_provider == "qwen":
+            return self.qwen_api_key
+        elif self.embedding_provider == "custom":
+            return self.custom_api_key
+        return self.openai_api_key
+    
+    @property
+    def current_chat_api_key(self) -> Optional[SecretStr]:
+        """Get current API key for chat provider"""
+        if self.chat_provider == "openai":
+            return self.openai_api_key
+        elif self.chat_provider == "qwen":
+            return self.qwen_api_key
+        elif self.chat_provider == "custom":
+            return self.custom_api_key
+        return self.openai_api_key
+    
+    @property
+    def current_embedding_base_url(self) -> str:
+        """Get current base URL for embedding provider"""
+        if self.embedding_provider == "openai":
+            return self.openai_base_url
+        elif self.embedding_provider == "qwen":
+            return self.qwen_base_url
+        elif self.embedding_provider == "custom":
+            return self.custom_base_url
+        return self.openai_base_url
+    
+    @property
+    def current_chat_base_url(self) -> str:
+        """Get current base URL for chat provider"""
+        if self.chat_provider == "openai":
+            return self.openai_base_url
+        elif self.chat_provider == "qwen":
+            return self.qwen_base_url
+        elif self.chat_provider == "custom":
+            return self.custom_base_url
+        return self.openai_base_url
     
     # Chunking settings
     chunk_size: int = Field(

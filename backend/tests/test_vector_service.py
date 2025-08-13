@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.vector_service import (
     EmbeddingService,
     ChromaVectorStore,
-    ChunkStorageManager,
+    VectorService,
     VectorDatabaseError
 )
 from app.models.document import Document, DocumentChunk
@@ -221,7 +221,7 @@ class TestChromaVectorStore:
             assert metas[0]["document_id"] == 1
 
 
-class TestChunkStorageManager:
+class TestVectorService:
     """Test chunk storage manager functionality"""
     
     @pytest.fixture
@@ -258,7 +258,7 @@ class TestChunkStorageManager:
     @pytest.mark.asyncio
     async def test_store_chunks_success(self, mock_db_session, mock_embedding_service, mock_vector_store):
         """Test successful chunk storage"""
-        manager = ChunkStorageManager()
+        manager = VectorService()
         manager.embedding_service = mock_embedding_service
         manager.vector_store = mock_vector_store
         
@@ -290,7 +290,7 @@ class TestChunkStorageManager:
         """Test chunk storage with embedding failure"""
         mock_embedding_service.embed_documents.side_effect = Exception("Embedding failed")
         
-        manager = ChunkStorageManager()
+        manager = VectorService()
         manager.embedding_service = mock_embedding_service
         manager.vector_store = mock_vector_store
         
@@ -313,7 +313,7 @@ class TestChunkStorageManager:
         mock_result.scalars.return_value.all.return_value = mock_chunks
         mock_db_session.execute.return_value = mock_result
         
-        manager = ChunkStorageManager()
+        manager = VectorService()
         manager.vector_store = mock_vector_store
         
         await manager.delete_chunks(mock_db_session, 123)
@@ -324,7 +324,7 @@ class TestChunkStorageManager:
     @pytest.mark.asyncio
     async def test_similarity_search_success(self, mock_embedding_service, mock_vector_store):
         """Test successful similarity search"""
-        manager = ChunkStorageManager()
+        manager = VectorService()
         manager.embedding_service = mock_embedding_service
         manager.vector_store = mock_vector_store
         
@@ -346,7 +346,7 @@ class TestChunkStorageManager:
             [{"chunk_id": 1}, {"chunk_id": 2}]
         )
         
-        manager = ChunkStorageManager()
+        manager = VectorService()
         manager.embedding_service = mock_embedding_service
         manager.vector_store = mock_vector_store
         
@@ -363,7 +363,7 @@ class TestChunkStorageManager:
         mock_result.scalar_one_or_none.return_value = mock_chunk
         mock_db_session.execute.return_value = mock_result
         
-        manager = ChunkStorageManager()
+        manager = VectorService()
         
         result = await manager.get_chunk_by_id(mock_db_session, 123)
         
@@ -385,7 +385,7 @@ class TestChunkStorageManager:
         mock_result.scalar_one_or_none.return_value = mock_chunk
         mock_db_session.execute.return_value = mock_result
         
-        manager = ChunkStorageManager()
+        manager = VectorService()
         manager.embedding_service = mock_embedding_service
         manager.vector_store = mock_vector_store
         
@@ -406,7 +406,7 @@ class TestChunkStorageManager:
             "collection_name": "test_collection"
         }
         
-        manager = ChunkStorageManager()
+        manager = VectorService()
         manager.vector_store = mock_vector_store
         
         stats = await manager.get_stats()
@@ -432,7 +432,7 @@ async def test_integration_chunk_storage_flow(temp_chroma_dir):
                 mock_openai.return_value = mock_client
                 
                 # Create manager
-                manager = ChunkStorageManager()
+                manager = VectorService()
                 
                 # Mock database session
                 mock_db = AsyncMock(spec=AsyncSession)

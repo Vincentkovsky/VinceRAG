@@ -61,6 +61,25 @@ class UserService:
         return user
     
     @staticmethod
+    async def update_user_superuser_status(db: AsyncSession, user_id: int, is_superuser: bool) -> Optional[User]:
+        """Update user's superuser status"""
+        user = await UserService.get_user_by_id(db, user_id)
+        if not user:
+            return None
+        
+        user.is_superuser = is_superuser
+        await db.commit()
+        await db.refresh(user)
+        
+        return user
+    
+    @staticmethod
+    async def get_all_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[User]:
+        """Get all users with pagination"""
+        result = await db.execute(select(User).offset(skip).limit(limit))
+        return result.scalars().all()
+    
+    @staticmethod
     async def is_email_taken(db: AsyncSession, email: str) -> bool:
         """Check if email is already registered"""
         user = await UserService.get_user_by_email(db, email)

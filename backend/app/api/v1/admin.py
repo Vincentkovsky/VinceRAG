@@ -11,6 +11,12 @@ from ...core.config import settings
 from ...core.health import health_checker, HealthStatus
 from ...core.metrics import metrics_collector
 from ...core.logging import get_logger
+from ...core.database import get_db
+from ...core.deps import get_current_superuser
+from ...services.user_service import UserService
+from ...schemas.auth import User as UserSchema
+from ...models.user import User
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger("admin")
 router = APIRouter()
@@ -304,3 +310,255 @@ async def get_system_info():
     except Exception as e:
         logger.error(f"Failed to get system info: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve system information")
+
+
+# User Management Endpoints
+class UserUpdateRequest(BaseModel):
+    """Request model for user updates"""
+    is_superuser: bool
+
+
+class AIModelConfig(BaseModel):
+    """AI Model configuration with separate providers for embedding and chat"""
+    embedding_provider: str
+    chat_provider: str
+    openai_api_key: Optional[str] = None
+    openai_base_url: str = "https://api.openai.com/v1"
+    openai_embedding_model: str = "text-embedding-ada-002"
+    openai_embedding_dimensions: int = 1536
+    openai_chat_model: str = "gpt-3.5-turbo"
+    qwen_api_key: Optional[str] = None
+    qwen_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    qwen_embedding_model: str = "text-embedding-v2"
+    qwen_embedding_dimensions: int = 1536
+    qwen_chat_model: str = "qwen-max-latest"
+    custom_api_key: Optional[str] = None
+    custom_base_url: str = ""
+    custom_embedding_model: str = ""
+    custom_embedding_dimensions: int = 1536
+    custom_chat_model: str = ""
+
+
+@router.get("/users", response_model=List[UserSchema])
+async def list_users(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all users (superuser only)"""
+    try:
+        users = await UserService.get_all_users(db, skip=skip, limit=limit)
+        return users
+    except Exception as e:
+        logger.error(f"Failed to list users: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve users")
+
+
+@router.put("/users/{user_id}", response_model=UserSchema)
+async def update_user(
+    user_id: int,
+    update_data: UserUpdateRequest,
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update user (superuser only)"""
+    try:
+        # Prevent user from removing their own superuser status
+        if user_id == current_user.id and not update_data.is_superuser:
+            raise HTTPException(
+                status_code=400, 
+                detail="Cannot remove superuser status from yourself"
+            )
+        
+        user = await UserService.update_user_superuser_status(
+            db, user_id, update_data.is_superuser
+        )
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update user {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update user")
+
+
+# AI Model Configuration Endpoints
+
+@router.get("/models/config", response_model=AIModelConfig)
+async def get_model_config(
+    current_user: User = Depends(get_current_superuser)
+):
+    """Get current AI model configuration"""
+    try:
+        return AIModelConfig(
+            embedding_provider=settings.embedding_provider,
+            chat_provider=settings.chat_provider,
+            openai_api_key="***" if settings.openai_api_key else None,
+            openai_base_url=settings.openai_base_url,
+            openai_embedding_model=settings.openai_embedding_model,
+            openai_embedding_dimensions=settings.openai_embedding_dimensions,
+            openai_chat_model=settings.openai_chat_model,
+            qwen_api_key="***" if settings.qwen_api_key else None,
+            qwen_base_url=settings.qwen_base_url,
+            qwen_embedding_model=settings.qwen_embedding_model,
+            qwen_embedding_dimensions=settings.qwen_embedding_dimensions,
+            qwen_chat_model=settings.qwen_chat_model,
+            custom_api_key="***" if settings.custom_api_key else None,
+            custom_base_url=settings.custom_base_url,
+            custom_embedding_model=settings.custom_embedding_model,
+            custom_embedding_dimensions=settings.custom_embedding_dimensions,
+            custom_chat_model=settings.custom_chat_model
+        )
+    except Exception as e:
+        logger.error(f"Failed to get model config: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve model configuration")
+
+
+@router.put("/models/config")
+async def update_model_config(
+    config: AIModelConfig,
+    current_user: User = Depends(get_current_superuser)
+):
+    """Update AI model configuration"""
+    try:
+        # Update settings
+        settings.embedding_provider = config.embedding_provider
+        settings.chat_provider = config.chat_provider
+        
+        # OpenAI settings
+        if config.openai_api_key and config.openai_api_key != "***":
+            settings.openai_api_key = config.openai_api_key
+        settings.openai_base_url = config.openai_base_url
+        settings.openai_embedding_model = config.openai_embedding_model
+        settings.openai_embedding_dimensions = config.openai_embedding_dimensions
+        settings.openai_chat_model = config.openai_chat_model
+        
+        # Qwen settings
+        if config.qwen_api_key and config.qwen_api_key != "***":
+            settings.qwen_api_key = config.qwen_api_key
+        settings.qwen_base_url = config.qwen_base_url
+        settings.qwen_embedding_model = config.qwen_embedding_model
+        settings.qwen_embedding_dimensions = config.qwen_embedding_dimensions
+        settings.qwen_chat_model = config.qwen_chat_model
+        
+        # Custom settings
+        if config.custom_api_key and config.custom_api_key != "***":
+            settings.custom_api_key = config.custom_api_key
+        settings.custom_base_url = config.custom_base_url
+        settings.custom_embedding_model = config.custom_embedding_model
+        settings.custom_embedding_dimensions = config.custom_embedding_dimensions
+        settings.custom_chat_model = config.custom_chat_model
+        
+        logger.info(f"Model configuration updated by user {current_user.email}")
+        
+        return {"message": "Model configuration updated successfully"}
+        
+    except Exception as e:
+        logger.error(f"Failed to update model config: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update model configuration")
+
+
+@router.post("/models/test")
+async def test_model_connection(
+    config: AIModelConfig,
+    current_user: User = Depends(get_current_superuser)
+):
+    """Test AI model connection with given configuration"""
+    try:
+        from openai import AsyncOpenAI
+        
+        # Test embedding provider
+        embedding_api_key = None
+        embedding_base_url = None
+        embedding_model = None
+        
+        if config.embedding_provider == "openai":
+            embedding_api_key = config.openai_api_key
+            embedding_base_url = config.openai_base_url
+            embedding_model = config.openai_embedding_model
+        elif config.embedding_provider == "qwen":
+            embedding_api_key = config.qwen_api_key
+            embedding_base_url = config.qwen_base_url
+            embedding_model = config.qwen_embedding_model
+        elif config.embedding_provider == "custom":
+            embedding_api_key = config.custom_api_key
+            embedding_base_url = config.custom_base_url
+            embedding_model = config.custom_embedding_model
+        
+        if not embedding_api_key:
+            return {"success": False, "error": f"API key is required for embedding provider: {config.embedding_provider}"}
+        
+        if not embedding_model:
+            return {"success": False, "error": f"Embedding model is required for provider: {config.embedding_provider}"}
+        
+        # Test embedding connection
+        embedding_client = AsyncOpenAI(api_key=embedding_api_key, base_url=embedding_base_url)
+        
+        embedding_response = await embedding_client.embeddings.create(
+            model=embedding_model,
+            input=["test embedding"]
+        )
+        
+        embedding_dimensions = len(embedding_response.data[0].embedding)
+        
+        # Test chat provider (if different from embedding)
+        chat_test_result = ""
+        if config.chat_provider != config.embedding_provider:
+            chat_api_key = None
+            chat_base_url = None
+            chat_model = None
+            
+            if config.chat_provider == "openai":
+                chat_api_key = config.openai_api_key
+                chat_base_url = config.openai_base_url
+                chat_model = config.openai_chat_model
+            elif config.chat_provider == "qwen":
+                chat_api_key = config.qwen_api_key
+                chat_base_url = config.qwen_base_url
+                chat_model = config.qwen_chat_model
+            elif config.chat_provider == "custom":
+                chat_api_key = config.custom_api_key
+                chat_base_url = config.custom_base_url
+                chat_model = config.custom_chat_model
+            
+            if not chat_api_key:
+                return {"success": False, "error": f"API key is required for chat provider: {config.chat_provider}"}
+            
+            if not chat_model:
+                return {"success": False, "error": f"Chat model is required for provider: {config.chat_provider}"}
+            
+            # Test chat connection
+            chat_client = AsyncOpenAI(api_key=chat_api_key, base_url=chat_base_url)
+            
+            try:
+                chat_response = await chat_client.chat.completions.create(
+                    model=chat_model,
+                    messages=[{"role": "user", "content": "Hello"}],
+                    max_tokens=5
+                )
+                chat_test_result = f" Chat provider ({config.chat_provider}) also tested successfully."
+            except Exception as chat_error:
+                return {"success": False, "error": f"Chat provider test failed: {str(chat_error)}"}
+        
+        success_message = f"Embedding provider ({config.embedding_provider}) tested successfully."
+        if chat_test_result:
+            success_message += chat_test_result
+        elif config.chat_provider == config.embedding_provider:
+            success_message += f" Using same provider for chat ({config.chat_provider})."
+        
+        return {
+            "success": True,
+            "message": success_message,
+            "embedding_dimensions": embedding_dimensions
+        }
+        
+    except Exception as e:
+        logger.error(f"Model connection test failed: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        }

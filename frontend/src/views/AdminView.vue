@@ -67,12 +67,13 @@
 
     <!-- Tabs for different sections -->
     <Tabs v-model="activeTab" class="w-full">
-      <TabsList class="grid w-full grid-cols-5">
+      <TabsList class="grid w-full grid-cols-6">
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="components">Components</TabsTrigger>
         <TabsTrigger value="metrics">Metrics</TabsTrigger>
         <TabsTrigger value="logs">Logs</TabsTrigger>
         <TabsTrigger value="config">Configuration</TabsTrigger>
+        <TabsTrigger value="models">AI Models</TabsTrigger>
       </TabsList>
 
       <!-- Overview Tab -->
@@ -121,6 +122,11 @@
           @reload-config="reloadConfiguration"
         />
       </TabsContent>
+
+      <!-- AI Models Tab -->
+      <TabsContent value="models" class="space-y-6">
+        <ModelConfiguration />
+      </TabsContent>
     </Tabs>
   </div>
 </template>
@@ -144,6 +150,7 @@ import ComponentsMonitor from '@/components/admin/ComponentsMonitor.vue'
 import MetricsMonitor from '@/components/admin/MetricsMonitor.vue'
 import LogsViewer from '@/components/admin/LogsViewer.vue'
 import ConfigurationManager from '@/components/admin/ConfigurationManager.vue'
+import ModelConfiguration from '@/components/admin/ModelConfiguration.vue'
 import { adminApi } from '@/api/admin'
 
 // Reactive state

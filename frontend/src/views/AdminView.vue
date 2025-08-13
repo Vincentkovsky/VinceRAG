@@ -128,10 +128,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RefreshCw } from 'lucide-vue-next'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card.vue'
-import { Button } from '@/components/ui/Button.vue'
-import { Badge } from '@/components/ui/Badge.vue'
-import { Progress } from '@/components/ui/Progress.vue'
+import Card from '@/components/ui/Card.vue'
+import CardContent from '@/components/ui/CardContent.vue'
+import CardHeader from '@/components/ui/CardHeader.vue'
+import CardTitle from '@/components/ui/CardTitle.vue'
+import Button from '@/components/ui/Button.vue'
+import Badge from '@/components/ui/Badge.vue'
+import Progress from '@/components/ui/Progress.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import TabsContent from '@/components/ui/TabsContent.vue'
 import TabsList from '@/components/ui/TabsList.vue'
@@ -146,11 +149,11 @@ import { adminApi } from '@/api/admin'
 // Reactive state
 const isLoading = ref(false)
 const activeTab = ref('overview')
-const healthData = ref(null)
-const metricsData = ref(null)
-const metricsHistory = ref(null)
-const logsData = ref([])
-const configData = ref(null)
+const healthData = ref<any>(null)
+const metricsData = ref<any>(null)
+const metricsHistory = ref<any>(null)
+const logsData = ref<any>(null)
+const configData = ref<any>(null)
 
 // Auto-refresh interval
 let refreshInterval: NodeJS.Timeout | null = null
@@ -160,13 +163,13 @@ const systemStatus = computed(() => {
   const status = healthData.value?.status
   switch (status) {
     case 'healthy':
-      return { text: 'Healthy', variant: 'success' }
+      return { text: 'Healthy', variant: 'success' as const }
     case 'degraded':
-      return { text: 'Degraded', variant: 'warning' }
+      return { text: 'Degraded', variant: 'warning' as const }
     case 'unhealthy':
-      return { text: 'Unhealthy', variant: 'destructive' }
+      return { text: 'Unhealthy', variant: 'destructive' as const }
     default:
-      return { text: 'Unknown', variant: 'secondary' }
+      return { text: 'Unknown', variant: 'secondary' as const }
   }
 })
 
@@ -244,7 +247,7 @@ const refreshComponent = async (componentName: string) => {
     const componentHealth = await adminApi.getComponentHealth(componentName)
     // Update the specific component in healthData
     if (healthData.value?.components) {
-      const index = healthData.value.components.findIndex(c => c.name === componentName)
+      const index = healthData.value.components.findIndex((c: any) => c.name === componentName)
       if (index !== -1) {
         healthData.value.components[index] = componentHealth
       }

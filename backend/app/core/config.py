@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from pydantic_settings import BaseSettings
-from pydantic import Field, ConfigDict, validator
+from pydantic import Field, ConfigDict, validator, SecretStr
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import threading
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     """Application settings"""
     
     # Database settings
-    database_url: str = Field(
+    database_url: SecretStr = Field(
         default="postgresql+asyncpg://postgres:password@localhost:5432/rag_system",
         description="Database URL"
     )
@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     database_max_overflow: int = Field(default=20, description="Database max overflow connections")
     
     # Redis settings
-    redis_url: str = Field(
+    redis_url: SecretStr = Field(
         default="redis://localhost:6379/0",
         description="Redis URL"
     )
@@ -49,10 +49,10 @@ class Settings(BaseSettings):
     @property
     def REDIS_URL(self) -> str:
         """Redis URL for Celery compatibility"""
-        return self.redis_url
+        return self.redis_url.get_secret_value()
     
     # JWT settings
-    secret_key: str = Field(
+    secret_key: SecretStr = Field(
         default="your-secret-key-change-in-production",
         description="JWT secret key"
     )
@@ -102,7 +102,7 @@ class Settings(BaseSettings):
     )
     
     # OpenAI settings
-    openai_api_key: Optional[str] = Field(
+    openai_api_key: Optional[SecretStr] = Field(
         default=None,
         description="OpenAI API key"
     )
@@ -231,11 +231,7 @@ class Settings(BaseSettings):
         return {
             "last_reload": self._last_reload.isoformat(),
             "hot_reload_enabled": self.enable_hot_reload,
-            "config_values": {
-                key: "***" if "key" in key.lower() or "secret" in key.lower() or "password" in key.lower()
-                else value
-                for key, value in self.model_dump().items()
-            }
+            "config_values": self.model_dump()  # SecretStr fields are automatically masked
         }
     
     def cleanup(self):

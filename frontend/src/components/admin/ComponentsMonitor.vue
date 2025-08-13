@@ -77,16 +77,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { 
   RefreshCw, 
   ChevronRight, 
   Server 
 } from 'lucide-vue-next'
-import { Card, CardContent } from '@/components/ui/Card.vue'
-import { Button } from '@/components/ui/Button.vue'
-import { Badge } from '@/components/ui/Badge.vue'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/Collapsible.vue'
+import Card from '@/components/ui/Card.vue'
+import CardContent from '@/components/ui/CardContent.vue'
+import Button from '@/components/ui/Button.vue'
+import Badge from '@/components/ui/Badge.vue'
+import Collapsible from '@/components/ui/Collapsible.vue'
+import CollapsibleContent from '@/components/ui/CollapsibleContent.vue'
+import CollapsibleTrigger from '@/components/ui/CollapsibleTrigger.vue'
 
 interface ComponentHealth {
   name: string
@@ -144,7 +147,7 @@ const getStatusIndicatorClass = (status: string): string => {
   }
 }
 
-const getStatusVariant = (status: string): string => {
+const getStatusVariant = (status: string): 'success' | 'warning' | 'destructive' | 'secondary' => {
   switch (status) {
     case 'healthy':
       return 'success'

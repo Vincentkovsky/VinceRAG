@@ -27,12 +27,12 @@ def get_engine():
     global engine
     if engine is None:
         engine = create_async_engine(
-            settings.database_url,
+            settings.database_url.get_secret_value(),
             pool_size=settings.database_pool_size,
             max_overflow=settings.database_max_overflow,
             pool_pre_ping=True,
             echo=settings.debug,
-            poolclass=NullPool if "sqlite" in settings.database_url else None
+            poolclass=NullPool if "sqlite" in settings.database_url.get_secret_value() else None
         )
     return engine
 

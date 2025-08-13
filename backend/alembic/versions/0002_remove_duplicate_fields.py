@@ -17,36 +17,50 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # First, migrate existing data from size and url columns to metadata
-    # This is a data migration step
-    
-    # Get connection
+    # Check if columns exist before trying to migrate them
     connection = op.get_bind()
     
-    # Update existing records to move size and url to metadata
-    connection.execute(sa.text("""
-        UPDATE documents 
-        SET metadata = COALESCE(metadata, '{}')::jsonb || 
-                      CASE 
-                        WHEN size IS NOT NULL THEN jsonb_build_object('fileSize', size)
-                        ELSE '{}'::jsonb
-                      END ||
-                      CASE 
-                        WHEN url IS NOT NULL THEN jsonb_build_object('url', url)
-                        ELSE '{}'::jsonb
-                      END
-        WHERE size IS NOT NULL OR url IS NOT NULL
+    # Check if size and url columns exist
+    result = connection.execute(sa.text("""
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'documents' 
+        AND column_name IN ('size', 'url')
     """))
+    existing_columns = [row[0] for row in result]
     
-    # Now drop the redundant columns
-    op.drop_column('documents', 'size')
-    op.drop_column('documents', 'url')
+    # Only migrate data if the columns exist
+    if existing_columns:
+        # Update existing records to move size and url to metadata
+        migration_parts = []
+        if 'size' in existing_columns:
+            migration_parts.append("CASE WHEN size IS NOT NULL THEN jsonb_build_object('fileSize', size) ELSE '{}'::jsonb END")
+        if 'url' in existing_columns:
+            migration_parts.append("CASE WHEN url IS NOT NULL THEN jsonb_build_object('url', url) ELSE '{}'::jsonb END")
+        
+        if migration_parts:
+            migration_sql = f"""
+                UPDATE documents 
+                SET metadata = COALESCE(metadata, '{{}}')::jsonb || {' || '.join(migration_parts)}
+                WHERE {' OR '.join([f'{col} IS NOT NULL' for col in existing_columns])}
+            """
+            connection.execute(sa.text(migration_sql))
     
-    # Make metadata column NOT NULL with default empty object
-    op.alter_column('documents', 'metadata',
-                   existing_type=sa.JSON(),
-                   nullable=False,
-                   server_default=sa.text("'{}'::json"))
+        # Drop the columns if they exist
+        if 'size' in existing_columns:
+            op.drop_column('documents', 'size')
+        if 'url' in existing_columns:
+            op.drop_column('documents', 'url')
+    
+    # Make metadata column NOT NULL with default empty object if it's not already
+    try:
+        op.alter_column('documents', 'metadata',
+                       existing_type=sa.JSON(),
+                       nullable=False,
+                       server_default=sa.text("'{}'::json"))
+    except Exception:
+        # Column might already be configured correctly
+        pass
 
 
 def downgrade() -> None:

@@ -165,12 +165,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { reactive } from 'vue'
 import { RefreshCw, FileText, ChevronRight } from 'lucide-vue-next'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card.vue'
-import { Button } from '@/components/ui/Button.vue'
-import { Badge } from '@/components/ui/Badge.vue'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/Collapsible.vue'
+import Card from '@/components/ui/Card.vue'
+import CardContent from '@/components/ui/CardContent.vue'
+import CardHeader from '@/components/ui/CardHeader.vue'
+import CardTitle from '@/components/ui/CardTitle.vue'
+import Button from '@/components/ui/Button.vue'
+import Badge from '@/components/ui/Badge.vue'
+import Collapsible from '@/components/ui/Collapsible.vue'
+import CollapsibleContent from '@/components/ui/CollapsibleContent.vue'
+import CollapsibleTrigger from '@/components/ui/CollapsibleTrigger.vue'
 
 interface LogEntry {
   timestamp: string
@@ -211,7 +216,7 @@ interface Emits {
   (e: 'filter-logs', filters: any): void
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const filters = reactive({
@@ -236,7 +241,7 @@ const clearFilters = () => {
   applyFilters()
 }
 
-const getLogLevelVariant = (level: string): string => {
+const getLogLevelVariant = (level: string): 'secondary' | 'default' | 'warning' | 'destructive' => {
   switch (level.toUpperCase()) {
     case 'DEBUG':
       return 'secondary'

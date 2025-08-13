@@ -10,7 +10,8 @@
         </div>
         
         <div class="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <nav class="flex items-center space-x-6">
+          <!-- Navigation - only show if authenticated -->
+          <nav v-if="authStore.isAuthenticated" class="flex items-center space-x-6">
             <router-link
               to="/documents"
               class="text-sm font-medium transition-colors hover:text-primary"
@@ -33,6 +34,7 @@
               Settings
             </router-link>
             <router-link
+              v-if="authStore.isAdmin"
               to="/admin"
               class="text-sm font-medium transition-colors hover:text-primary"
               :class="{ 'text-primary': $route.name === 'Admin' }"
@@ -41,15 +43,41 @@
             </router-link>
           </nav>
           
-          <Button
-            variant="ghost"
-            size="icon"
-            @click="appStore.toggleTheme()"
-            class="ml-4"
-          >
-            <span v-if="appStore.theme === 'light'">🌙</span>
-            <span v-else>☀️</span>
-          </Button>
+          <!-- User menu and controls -->
+          <div class="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              @click="appStore.toggleTheme()"
+            >
+              <span v-if="appStore.theme === 'light'">🌙</span>
+              <span v-else>☀️</span>
+            </Button>
+            
+            <!-- User menu -->
+            <div v-if="authStore.isAuthenticated" class="flex items-center space-x-2">
+              <span class="text-sm text-muted-foreground">
+                {{ authStore.user?.email }}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                @click="handleLogout"
+              >
+                Sign Out
+              </Button>
+            </div>
+            
+            <!-- Sign in button for unauthenticated users -->
+            <Button
+              v-else
+              variant="default"
+              size="sm"
+              @click="$router.push('/auth')"
+            >
+              Sign In
+            </Button>
+          </div>
         </div>
       </div>
     </nav>
@@ -93,18 +121,30 @@
 
 <script setup lang="ts">
 import { onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
 import Button from '@/components/ui/Button.vue'
 
 const appStore = useAppStore()
+const authStore = useAuthStore()
+const router = useRouter()
 
-onMounted(() => {
+onMounted(async () => {
   appStore.initializeFromStorage()
+  
+  // Initialize auth state
+  await authStore.initializeAuth()
   
   // Listen for online/offline events
   window.addEventListener('online', () => appStore.setOnlineStatus(true))
   window.addEventListener('offline', () => appStore.setOnlineStatus(false))
 })
+
+async function handleLogout() {
+  authStore.logout()
+  router.push('/auth')
+}
 
 // Apply theme to document
 watch(

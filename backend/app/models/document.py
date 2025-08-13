@@ -21,7 +21,7 @@ class Document(Base):
     name = Column(String(255), nullable=False, index=True)
     type = Column(String(50), nullable=False, index=True)  # pdf, docx, txt, md, pptx, xlsx, csv, rtf, url
     status = Column(String(50), nullable=False, default="processing", index=True)  # processing, completed, failed
-    document_metadata = Column(JSON, nullable=False, default=lambda: {})  # Document metadata as JSON
+    document_metadata = Column("metadata", JSON, nullable=False, default=lambda: {})  # Document metadata as JSON
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     

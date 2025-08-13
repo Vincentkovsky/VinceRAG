@@ -159,16 +159,21 @@ async def similarity_search(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class ChunkUpdateRequest(BaseModel):
+    """Request model for updating chunk content"""
+    content: str = Field(..., min_length=1, max_length=10000)
+
+
 @router.put("/chunks/{chunk_id}", response_model=ChunkResponse)
 async def update_chunk(
     chunk_id: int,
-    content: str = Field(..., min_length=1, max_length=10000),
+    request: ChunkUpdateRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """Update chunk content and re-embed"""
     try:
         updated_chunk = await chunk_storage_manager.update_chunk(
-            db, chunk_id, content
+            db, chunk_id, request.content
         )
         
         if not updated_chunk:

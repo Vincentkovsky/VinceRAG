@@ -161,7 +161,7 @@ class RAGQueryService:
         
         # Initialize LLM
         self.llm = ChatOpenAI(
-            api_key=settings.openai_api_key,
+            api_key=settings.openai_api_key.get_secret_value(),
             model="gpt-3.5-turbo",
             temperature=0.1,
             streaming=True
@@ -169,7 +169,7 @@ class RAGQueryService:
         
         # Initialize non-streaming LLM for regular queries
         self.llm_non_streaming = ChatOpenAI(
-            api_key=settings.openai_api_key,
+            api_key=settings.openai_api_key.get_secret_value(),
             model="gpt-3.5-turbo",
             temperature=0.1,
             streaming=False

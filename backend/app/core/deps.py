@@ -24,12 +24,22 @@ async def get_current_user(
     
     # Verify token
     payload = verify_token(credentials.credentials)
-    user_id: Optional[int] = payload.get("sub")
+    user_id_str: Optional[str] = payload.get("sub")
     
-    if user_id is None:
+    if user_id_str is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Convert string user_id to integer
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID in token",
             headers={"WWW-Authenticate": "Bearer"},
         )
     

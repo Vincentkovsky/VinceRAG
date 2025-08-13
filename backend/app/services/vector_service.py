@@ -32,7 +32,7 @@ class EmbeddingService:
         if not settings.openai_api_key:
             raise ValueError("OpenAI API key is required for embedding generation")
         
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key.get_secret_value())
         self.model = settings.openai_embedding_model
         self.dimensions = settings.openai_embedding_dimensions
         

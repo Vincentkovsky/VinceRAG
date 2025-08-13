@@ -33,8 +33,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useDocumentsStore } from '@/stores/documents'
+import { useAuthStore } from '@/stores/auth'
 import Card from '@/components/ui/Card.vue'
 import Badge from '@/components/ui/Badge.vue'
 import DocumentUpload from '@/components/documents/DocumentUpload.vue'
@@ -42,8 +43,22 @@ import UrlInput from '@/components/documents/UrlInput.vue'
 import DocumentList from '@/components/documents/DocumentList.vue'
 
 const documentsStore = useDocumentsStore()
+const authStore = useAuthStore()
 
+// Fetch documents when component mounts and user is authenticated
 onMounted(() => {
-  documentsStore.fetchDocuments()
+  if (authStore.isAuthenticated) {
+    documentsStore.fetchDocuments()
+  }
 })
+
+// Watch for authentication changes and fetch documents when user logs in
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated) {
+      documentsStore.fetchDocuments()
+    }
+  }
+)
 </script>

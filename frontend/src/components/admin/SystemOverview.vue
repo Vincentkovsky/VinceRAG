@@ -149,9 +149,12 @@ import {
   AlertTriangle, 
   Database 
 } from 'lucide-vue-next'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card.vue'
-import { Progress } from '@/components/ui/Progress.vue'
-import { Badge } from '@/components/ui/Badge.vue'
+import Card from '@/components/ui/Card.vue'
+import CardContent from '@/components/ui/CardContent.vue'
+import CardHeader from '@/components/ui/CardHeader.vue'
+import CardTitle from '@/components/ui/CardTitle.vue'
+import Progress from '@/components/ui/Progress.vue'
+import Badge from '@/components/ui/Badge.vue'
 
 interface Props {
   healthData: any

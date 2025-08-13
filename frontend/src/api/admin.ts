@@ -2,7 +2,7 @@
  * Admin API client for system monitoring and configuration
  */
 
-import { apiClient } from './client'
+import apiClient from './client'
 
 export interface HealthData {
   status: 'healthy' | 'degraded' | 'unhealthy'

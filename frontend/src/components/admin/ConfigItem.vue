@@ -43,8 +43,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Eye, EyeOff } from 'lucide-vue-next'
-import { Button } from '@/components/ui/Button.vue'
-import { Badge } from '@/components/ui/Badge.vue'
+import Button from '@/components/ui/Button.vue'
+import Badge from '@/components/ui/Badge.vue'
 
 interface Props {
   label: string

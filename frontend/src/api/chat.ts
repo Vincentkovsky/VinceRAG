@@ -19,6 +19,7 @@ export interface ChatHistoryResponse {
   messages: ChatMessage[]
   session: ChatSession | null
   total: number
+  sessions?: ChatSession[]
 }
 
 export const chatApi = {
@@ -108,9 +109,21 @@ export const chatApi = {
 
   // Get chat history
   async getChatHistory(sessionId?: number): Promise<ChatHistoryResponse> {
-    const params = sessionId ? { session_id: sessionId } : {}
-    const response = await apiClient.get('/chat/history', { params })
-    return response.data
+    if (sessionId) {
+      // Get messages for a specific session
+      const params = { session_id: sessionId }
+      const response = await apiClient.get('/chat/history', { params })
+      return response.data
+    } else {
+      // Get all sessions (for chat history list)
+      const response = await apiClient.get('/chat/sessions')
+      return {
+        messages: [],
+        session: null,
+        total: response.data.length,
+        sessions: response.data
+      }
+    }
   },
 
   // Clear chat history

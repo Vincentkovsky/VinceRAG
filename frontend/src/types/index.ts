@@ -136,3 +136,33 @@ export interface NotificationMessage {
   timestamp: Date
   read: boolean
 }
+
+// Auth types
+export interface User {
+  id: number
+  email: string
+  is_active: boolean
+  is_superuser: boolean
+}
+
+export interface UserCreate {
+  email: string
+  password: string
+}
+
+export interface UserLogin {
+  email: string
+  password: string
+}
+
+export interface Token {
+  access_token: string
+  token_type: string
+}
+
+export interface AuthState {
+  user: User | null
+  token: string | null
+  isAuthenticated: boolean
+  isLoading: boolean
+}

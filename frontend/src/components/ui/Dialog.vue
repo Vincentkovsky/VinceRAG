@@ -12,7 +12,7 @@
       <div
         :class="cn(
           'relative z-50 grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg',
-          $attrs.class as string
+          dialogClass
         )"
         @click.stop
       >
@@ -64,12 +64,15 @@ interface Props {
   description?: string
   showClose?: boolean
   closeOnBackdrop?: boolean
+  class?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showClose: true,
   closeOnBackdrop: true
 })
+
+const dialogClass = props.class
 
 const emit = defineEmits<{
   'update:open': [value: boolean]

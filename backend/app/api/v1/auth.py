@@ -6,13 +6,14 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from ...core.database import get_db
-from ...core.auth import verify_password, get_password_hash, create_access_token
+from ...core.auth import create_access_token
 from ...core.config import settings
-from ...models.user import User
+from ...core.deps import get_current_active_user
+from ...services.user_service import UserService
 from ...schemas.auth import UserCreate, UserLogin, User as UserSchema, Token
+from ...models.user import User
 
 router = APIRouter()
 
@@ -24,27 +25,15 @@ async def register(
 ):
     """Register a new user"""
     
-    # Check if user already exists
-    result = await db.execute(select(User).where(User.email == user_data.email))
-    existing_user = result.scalar_one_or_none()
-    
-    if existing_user:
+    # Check if email is already taken
+    if await UserService.is_email_taken(db, user_data.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
     
     # Create new user
-    hashed_password = get_password_hash(user_data.password)
-    user = User(
-        email=user_data.email,
-        hashed_password=hashed_password
-    )
-    
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    
+    user = await UserService.create_user(db, user_data)
     return user
 
 
@@ -55,21 +44,14 @@ async def login(
 ):
     """Login user and return access token"""
     
-    # Get user from database
-    result = await db.execute(select(User).where(User.email == user_data.email))
-    user = result.scalar_one_or_none()
+    # Authenticate user
+    user = await UserService.authenticate_user(db, user_data.email, user_data.password)
     
-    if not user or not verify_password(user_data.password, user.hashed_password):
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
         )
     
     # Create access token
@@ -81,6 +63,14 @@ async def login(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@router.get("/me", response_model=UserSchema)
+async def get_current_user_info(
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get current authenticated user information"""
+    return current_user
+
+
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -88,11 +78,10 @@ async def login_for_access_token(
 ):
     """OAuth2 compatible token login"""
     
-    # Get user from database
-    result = await db.execute(select(User).where(User.email == form_data.username))
-    user = result.scalar_one_or_none()
+    # Authenticate user (using email as username)
+    user = await UserService.authenticate_user(db, form_data.username, form_data.password)
     
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -106,3 +95,11 @@ async def login_for_access_token(
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model=UserSchema)
+async def get_current_user_info(
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get current authenticated user information"""
+    return current_user

@@ -111,7 +111,7 @@ class HealthChecker:
             async with session:
                 # Simple query to test connectivity
                 result = await session.execute(text("SELECT 1"))
-                await result.fetchone()
+                result.fetchone()
                 
                 # Check connection pool status
                 pool = session.get_bind().pool
@@ -120,7 +120,7 @@ class HealthChecker:
                     "checked_in": pool.checkedin(),
                     "checked_out": pool.checkedout(),
                     "overflow": pool.overflow(),
-                    "invalid": pool.invalid()
+                    # "invalid": pool.invalid()  # Not available in async pool
                 }
                 
                 response_time = time.time() - start_time
@@ -157,7 +157,7 @@ class HealthChecker:
         start_time = time.time()
         
         try:
-            redis_client = redis.from_url(settings.redis_url)
+            redis_client = redis.from_url(settings.redis_url.get_secret_value())
             
             # Test basic operations
             await redis_client.ping()
@@ -308,7 +308,7 @@ class HealthChecker:
             
             # Test OpenAI API if configured
             if settings.openai_api_key:
-                client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+                client = openai.AsyncOpenAI(api_key=settings.openai_api_key.get_secret_value())
                 
                 # Simple API test
                 models = await client.models.list()

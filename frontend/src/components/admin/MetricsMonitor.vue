@@ -205,9 +205,12 @@ import {
   Database, 
   AlertTriangle 
 } from 'lucide-vue-next'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card.vue'
-import { Button } from '@/components/ui/Button.vue'
-import { Progress } from '@/components/ui/Progress.vue'
+import Card from '@/components/ui/Card.vue'
+import CardContent from '@/components/ui/CardContent.vue'
+import CardHeader from '@/components/ui/CardHeader.vue'
+import CardTitle from '@/components/ui/CardTitle.vue'
+import Button from '@/components/ui/Button.vue'
+import Progress from '@/components/ui/Progress.vue'
 
 interface Props {
   metricsData: any

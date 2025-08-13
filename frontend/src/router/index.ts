@@ -29,6 +29,14 @@ const routes: RouteRecordRaw[] = [
     meta: {
       title: 'Settings'
     }
+  },
+  {
+    path: '/admin',
+    name: 'Admin',
+    component: () => import('@/views/AdminView.vue'),
+    meta: {
+      title: 'Admin Dashboard'
+    }
   }
 ]
 

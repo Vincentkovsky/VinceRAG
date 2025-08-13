@@ -76,6 +76,12 @@ async def init_db():
         logger.info("Database tables created successfully")
 
 
+async def get_db_session() -> AsyncSession:
+    """Get a database session for health checks and other utilities"""
+    session_factory = get_session_factory()
+    return session_factory()
+
+
 async def close_db():
     """Close database connections"""
     engine = get_engine()

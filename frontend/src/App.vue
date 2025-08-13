@@ -32,6 +32,13 @@
             >
               Settings
             </router-link>
+            <router-link
+              to="/admin"
+              class="text-sm font-medium transition-colors hover:text-primary"
+              :class="{ 'text-primary': $route.name === 'Admin' }"
+            >
+              Admin
+            </router-link>
           </nav>
           
           <Button

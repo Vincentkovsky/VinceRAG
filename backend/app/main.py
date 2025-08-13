@@ -1,8 +1,8 @@
 """
-FastAPI main application
+FastAPI main application with comprehensive configuration and monitoring
 """
 
-import logging
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -11,31 +11,68 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .core.config import settings
 from .core.database import init_db, close_db
+from .core.logging import setup_logging, get_logger
 from .core.middleware import LoggingMiddleware, setup_cors, setup_security_headers
+from .core.health import health_checker
 from .api.v1.api import api_router
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+# Setup logging system
+setup_logging()
+logger = get_logger("main")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan events"""
+    """Application lifespan events with comprehensive startup/shutdown"""
     # Startup
     logger.info("Starting up RAG System API...")
-    await init_db()
-    logger.info("Database initialized")
+    logger.info(f"Configuration: Debug={settings.debug}, Hot Reload={settings.enable_hot_reload}")
     
-    yield
+    try:
+        # Initialize database
+        await init_db()
+        logger.info("Database initialized")
+        
+        # Start periodic health checks
+        health_check_task = asyncio.create_task(
+            health_checker.run_health_checks_periodically()
+        )
+        logger.info("Health check system started")
+        
+        # Log startup completion
+        logger.info("RAG System API startup completed successfully")
+        
+        yield
+        
+    except Exception as e:
+        logger.error(f"Startup failed: {e}", exc_info=True)
+        raise
     
-    # Shutdown
-    logger.info("Shutting down RAG System API...")
-    await close_db()
-    logger.info("Database connections closed")
+    finally:
+        # Shutdown
+        logger.info("Shutting down RAG System API...")
+        
+        try:
+            # Cancel health check task
+            if 'health_check_task' in locals():
+                health_check_task.cancel()
+                try:
+                    await health_check_task
+                except asyncio.CancelledError:
+                    pass
+            
+            # Close database connections
+            await close_db()
+            logger.info("Database connections closed")
+            
+            # Cleanup configuration watcher
+            settings.cleanup()
+            logger.info("Configuration system cleaned up")
+            
+        except Exception as e:
+            logger.error(f"Shutdown error: {e}", exc_info=True)
+        
+        logger.info("RAG System API shutdown completed")
 
 
 # Create FastAPI app
@@ -58,11 +95,15 @@ setup_security_headers(app)
 app.include_router(api_router, prefix=settings.api_v1_str)
 
 
-# Health check endpoint
+# Basic health check endpoint (detailed health checks are in admin API)
 @app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "rag-system-api"}
+async def basic_health_check():
+    """Basic health check endpoint"""
+    return {
+        "status": "healthy", 
+        "service": "rag-system-api",
+        "timestamp": settings._last_reload.isoformat() if hasattr(settings, '_last_reload') else None
+    }
 
 
 # Root endpoint
@@ -76,33 +117,65 @@ async def root():
     }
 
 
-# Exception handlers
+# Enhanced exception handlers with structured logging
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Handle HTTP exceptions"""
+    """Handle HTTP exceptions with logging"""
+    logger.warning(
+        f"HTTP exception: {exc.status_code} - {exc.detail}",
+        extra={
+            "status_code": exc.status_code,
+            "path": request.url.path,
+            "method": request.method
+        }
+    )
+    
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail, "status_code": exc.status_code}
+        content={
+            "detail": exc.detail, 
+            "status_code": exc.status_code,
+            "path": request.url.path
+        }
     )
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle validation errors"""
+    """Handle validation errors with detailed logging"""
+    logger.warning(
+        f"Validation error on {request.method} {request.url.path}",
+        extra={
+            "errors": exc.errors(),
+            "path": request.url.path,
+            "method": request.method
+        }
+    )
+    
     return JSONResponse(
         status_code=422,
         content={
             "detail": "Validation error",
             "errors": exc.errors(),
-            "status_code": 422
+            "status_code": 422,
+            "path": request.url.path
         }
     )
 
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle general exceptions"""
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    """Handle general exceptions with comprehensive logging"""
+    logger.error(
+        f"Unhandled exception: {str(exc)}",
+        exc_info=True,
+        extra={
+            "exception_type": type(exc).__name__,
+            "path": request.url.path,
+            "method": request.method,
+            "client_ip": request.client.host if request.client else None
+        }
+    )
     
     if settings.debug:
         return JSONResponse(
@@ -110,7 +183,8 @@ async def general_exception_handler(request: Request, exc: Exception):
             content={
                 "detail": str(exc),
                 "type": type(exc).__name__,
-                "status_code": 500
+                "status_code": 500,
+                "path": request.url.path
             }
         )
     else:
@@ -118,6 +192,7 @@ async def general_exception_handler(request: Request, exc: Exception):
             status_code=500,
             content={
                 "detail": "Internal server error",
-                "status_code": 500
+                "status_code": 500,
+                "path": request.url.path
             }
         )

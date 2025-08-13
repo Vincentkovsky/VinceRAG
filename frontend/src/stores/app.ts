@@ -71,6 +71,20 @@ export const useAppStore = defineStore('app', () => {
     if (savedSidebarState) {
       sidebarCollapsed.value = savedSidebarState === 'true'
     }
+    
+    // Initialize default config
+    if (!config.value) {
+      config.value = {
+        apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+        maxFileSize: 50 * 1024 * 1024, // 50MB
+        supportedFileTypes: ['pdf', 'docx', 'txt', 'md', 'pptx', 'xlsx', 'csv', 'rtf'],
+        features: {
+          webScraping: true,
+          streaming: true,
+          multipleFiles: true
+        }
+      }
+    }
   }
   
   return {

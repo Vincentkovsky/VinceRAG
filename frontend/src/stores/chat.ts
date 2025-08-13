@@ -20,7 +20,7 @@ export const useChatStore = defineStore('chat', () => {
   const hasMessages = computed(() => messages.value.length > 0)
   
   // Actions
-  async function sendMessage(content: string) {
+  async function sendMessage(content: string, documentIds?: number[]) {
     const userMessage: ChatMessage = {
       id: Date.now(), // Temporary ID
       type: 'user',
@@ -32,7 +32,7 @@ export const useChatStore = defineStore('chat', () => {
     isLoading.value = true
     
     try {
-      const response = await chatApi.sendMessage(content, currentSession.value?.id)
+      const response = await chatApi.sendMessage(content, currentSession.value?.id, documentIds)
       
       // Update session if new
       if (response.sessionId && !currentSession.value) {
@@ -56,7 +56,9 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
   
-  async function sendStreamingMessage(content: string) {
+  const streamController = ref<AbortController | null>(null)
+
+  async function sendStreamingMessage(content: string, documentIds?: number[]) {
     const userMessage: ChatMessage = {
       id: Date.now(),
       type: 'user',
@@ -68,8 +70,16 @@ export const useChatStore = defineStore('chat', () => {
     isStreaming.value = true
     streamingMessage.value = ''
     
+    // Create abort controller for stopping generation
+    streamController.value = new AbortController()
+    
     try {
-      const stream = await chatApi.sendStreamingMessage(content, currentSession.value?.id)
+      const stream = await chatApi.sendStreamingMessage(
+        content, 
+        currentSession.value?.id, 
+        documentIds,
+        streamController.value.signal
+      )
       const reader = stream.getReader()
       
       while (true) {
@@ -88,11 +98,31 @@ export const useChatStore = defineStore('chat', () => {
       
       messages.value.push(assistantMessage)
     } catch (error) {
-      console.error('Failed to send streaming message:', error)
-      throw error
+      if ((error as Error).name === 'AbortError') {
+        // Add partial message if generation was stopped
+        if (streamingMessage.value) {
+          const assistantMessage: ChatMessage = {
+            id: Date.now(),
+            type: 'assistant',
+            content: streamingMessage.value + ' [Generation stopped]',
+            timestamp: new Date()
+          }
+          messages.value.push(assistantMessage)
+        }
+      } else {
+        console.error('Failed to send streaming message:', error)
+        throw error
+      }
     } finally {
       isStreaming.value = false
       streamingMessage.value = ''
+      streamController.value = null
+    }
+  }
+  
+  function stopStreaming() {
+    if (streamController.value) {
+      streamController.value.abort()
     }
   }
   
@@ -140,6 +170,7 @@ export const useChatStore = defineStore('chat', () => {
     sendStreamingMessage,
     loadChatHistory,
     clearChatHistory,
-    startNewSession
+    startNewSession,
+    stopStreaming
   }
 })

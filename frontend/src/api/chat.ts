@@ -40,7 +40,8 @@ export const chatApi = {
   async sendStreamingMessage(
     query: string,
     sessionId?: number,
-    documentIds?: number[]
+    documentIds?: number[],
+    signal?: AbortSignal
   ): Promise<ReadableStream<string>> {
     const response = await fetch(`${apiClient.defaults.baseURL}/chat/query/stream`, {
       method: 'POST',
@@ -53,6 +54,7 @@ export const chatApi = {
         session_id: sessionId,
         document_ids: documentIds,
       }),
+      signal,
     })
 
     if (!response.ok) {

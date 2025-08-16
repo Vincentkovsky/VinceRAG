@@ -28,7 +28,7 @@
                 </select>
 
                 <select v-model="sortBy" class="px-3 py-2 border border-input rounded-md bg-background text-sm">
-                    <option value="createdAt">Date Added</option>
+                    <option value="created_at">Date Added</option>
                     <option value="name">Name</option>
                     <option value="type">Type</option>
                     <option value="status">Status</option>
@@ -93,25 +93,25 @@
                 <div class="space-y-2 text-sm text-muted-foreground">
                     <div class="flex justify-between">
                         <span>Added:</span>
-                        <span>{{ formatDate(document.createdAt) }}</span>
+                        <span>{{ formatDate(document.created_at) }}</span>
                     </div>
 
-                    <div v-if="'fileSize' in document.metadata" class="flex justify-between">
+                    <div v-if="'fileSize' in document.document_metadata" class="flex justify-between">
                         <span>Size:</span>
-                        <span>{{ formatFileSize(document.metadata.fileSize) }}</span>
+                        <span>{{ formatFileSize(document.document_metadata.fileSize) }}</span>
                     </div>
 
-                    <div v-if="'url' in document.metadata" class="flex justify-between">
+                    <div v-if="'url' in document.document_metadata" class="flex justify-between">
                         <span>URL:</span>
-                        <span class="truncate max-w-32" :title="document.metadata.url">
-                            {{ document.metadata.url }}
+                        <span class="truncate max-w-32" :title="document.document_metadata.url">
+                            {{ document.document_metadata.url }}
                         </span>
                     </div>
 
-                    <div v-if="'chunkCount' in document.metadata && document.metadata.chunkCount"
+                    <div v-if="'chunkCount' in document.document_metadata && document.document_metadata.chunkCount"
                         class="flex justify-between">
                         <span>Chunks:</span>
-                        <span>{{ document.metadata.chunkCount }}</span>
+                        <span>{{ document.document_metadata.chunkCount }}</span>
                     </div>
                 </div>
             </Card>
@@ -157,7 +157,7 @@ const appStore = useAppStore()
 const searchQuery = ref('')
 const selectedType = ref('')
 const selectedStatus = ref('')
-const sortBy = ref('createdAt')
+const sortBy = ref('created_at')
 const documentToDelete = ref<Document | null>(null)
 
 const filteredDocuments = computed(() => {
@@ -191,9 +191,9 @@ const filteredDocuments = computed(() => {
                 return a.type.localeCompare(b.type)
             case 'status':
                 return a.status.localeCompare(b.status)
-            case 'createdAt':
+            case 'created_at':
             default:
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         }
     })
 
@@ -235,7 +235,7 @@ async function confirmDelete() {
     }
 }
 
-function getProcessingProgress(documentId: number): number {
+function getProcessingProgress(documentId: string): number {
     const status = documentsStore.processingStatus.get(documentId)
     return status?.progress || 0
 }

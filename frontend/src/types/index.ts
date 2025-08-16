@@ -1,11 +1,11 @@
 // Document types
 export interface Document {
-  id: number // Snowflake ID
+  id: string // Snowflake ID as string to avoid JavaScript precision issues
   name: string
   type: 'pdf' | 'docx' | 'txt' | 'md' | 'pptx' | 'xlsx' | 'csv' | 'rtf' | 'url'
   status: 'processing' | 'completed' | 'failed'
-  createdAt: Date
-  updatedAt?: Date
+  created_at: string // ISO string from API
+  updated_at?: string // ISO string from API
   metadata: DocumentMetadata
 }
 
@@ -36,15 +36,15 @@ export interface WebMetadata extends DocumentMetadataBase {
 export type DocumentMetadata = FileMetadata | WebMetadata
 
 export interface DocumentChunk {
-  id: number // Snowflake ID
-  documentId: number
+  id: string // Snowflake ID as string
+  documentId: string // Snowflake ID as string
   chunkIndex: number
   vectorId: string
   content: string
   startChar: number
   endChar: number
   tokenCount: number
-  createdAt: Date
+  created_at: string // ISO string from API
   documentName?: string
   documentType?: string
   similarity?: number
@@ -52,21 +52,21 @@ export interface DocumentChunk {
 
 // Chat types
 export interface ChatMessage {
-  id: number // Snowflake ID
+  id: string // Snowflake ID as string
   type: 'user' | 'assistant'
   content: string
   sources?: DocumentSource[]
-  timestamp: Date
+  timestamp: string // ISO string from API
 }
 
 export interface ChatSession {
-  id: number
-  createdAt: Date
+  id: string // Snowflake ID as string
+  created_at: string // ISO string from API
 }
 
 export interface DocumentSource {
-  chunkId: number
-  documentId: number
+  chunkId: string // Snowflake ID as string
+  documentId: string // Snowflake ID as string
   documentName: string
   documentType: string
   chunk: string
@@ -98,7 +98,7 @@ export interface ProcessingStatus {
   status: 'processing' | 'completed' | 'failed'
   progress?: number
   message?: string
-  updatedAt: string
+  updated_at: string
   metadata?: Record<string, any>
 }
 
@@ -129,17 +129,17 @@ export interface AppConfig {
 }
 
 export interface NotificationMessage {
-  id: number
+  id: string // Snowflake ID as string
   type: 'success' | 'error' | 'warning' | 'info'
   title: string
   message: string
-  timestamp: Date
+  timestamp: string // ISO string from API
   read: boolean
 }
 
 // Auth types
 export interface User {
-  id: number
+  id: string // Snowflake ID as string
   email: string
   is_active: boolean
   is_superuser: boolean

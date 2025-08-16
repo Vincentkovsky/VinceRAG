@@ -20,6 +20,9 @@ export interface UploadResponse {
   message: string
 }
 
+// For backward compatibility, some endpoints return Document directly
+export type DocumentResponse = Document
+
 export const documentsApi = {
   // Get all documents
   async getDocuments(params?: {
@@ -37,7 +40,7 @@ export const documentsApi = {
   async uploadDocument(
     file: File,
     onProgress?: (progress: number) => void
-  ): Promise<UploadResponse> {
+  ): Promise<Document> {
     const formData = new FormData()
     formData.append('file', file)
 
@@ -57,7 +60,7 @@ export const documentsApi = {
   },
 
   // Add URL
-  async addUrl(url: string, crawlOptions?: CrawlOptions): Promise<UploadResponse> {
+  async addUrl(url: string, crawlOptions?: CrawlOptions): Promise<Document> {
     const response = await apiClient.post('/documents/url', {
       url,
       crawl_options: crawlOptions,
@@ -66,7 +69,7 @@ export const documentsApi = {
   },
 
   // Crawl website
-  async crawlWebsite(url: string, crawlOptions: CrawlOptions): Promise<UploadResponse> {
+  async crawlWebsite(url: string, crawlOptions: CrawlOptions): Promise<Document[]> {
     const response = await apiClient.post('/documents/crawl', {
       url,
       ...crawlOptions,
@@ -75,20 +78,20 @@ export const documentsApi = {
   },
 
   // Delete document
-  async deleteDocument(id: number): Promise<ApiResponse<null>> {
+  async deleteDocument(id: string): Promise<ApiResponse<null>> {
     const response = await apiClient.delete(`/documents/${id}`)
     return response.data
   },
 
   // Get document status
-  async getDocumentStatus(id: number): Promise<ProcessingStatus> {
+  async getDocumentStatus(id: string): Promise<ProcessingStatus> {
     const response = await apiClient.get(`/documents/${id}/status`)
     return response.data
   },
 
   // Get document chunks
   async getDocumentChunks(
-    id: number,
+    id: string,
     params?: {
       page?: number
       pageSize?: number
@@ -99,19 +102,19 @@ export const documentsApi = {
   },
 
   // Process document
-  async processDocument(id: number): Promise<ApiResponse<null>> {
+  async processDocument(id: string): Promise<ApiResponse<null>> {
     const response = await apiClient.post(`/documents/${id}/process`)
     return response.data
   },
 
   // Get chunk details
-  async getChunk(id: number): Promise<DocumentChunk> {
+  async getChunk(id: string): Promise<DocumentChunk> {
     const response = await apiClient.get(`/chunks/${id}`)
     return response.data
   },
 
   // Delete chunk
-  async deleteChunk(id: number): Promise<ApiResponse<null>> {
+  async deleteChunk(id: string): Promise<ApiResponse<null>> {
     const response = await apiClient.delete(`/chunks/${id}`)
     return response.data
   },

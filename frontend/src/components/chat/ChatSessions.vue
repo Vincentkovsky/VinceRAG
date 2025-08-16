@@ -40,7 +40,7 @@
           </div>
           
           <div class="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-            <span>{{ formatDate(session.createdAt) }}</span>
+            <span>{{ formatDate(session.created_at) }}</span>
             <span v-if="session.messageCount">
               • {{ session.messageCount }} message{{ session.messageCount > 1 ? 's' : '' }}
             </span>
@@ -163,7 +163,7 @@ async function selectSession(session: ExtendedChatSession) {
     appStore.addNotification({
       type: 'success',
       title: 'Session Loaded',
-      message: `Loaded chat session from ${formatDate(session.createdAt)}`
+      message: `Loaded chat session from ${formatDate(session.created_at)}`
     })
   } catch (error) {
     appStore.addNotification({
